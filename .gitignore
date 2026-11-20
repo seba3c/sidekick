@@ -11,3 +11,4 @@ wheels/
 .env
 sandbox/
 .python-version
+.idea/

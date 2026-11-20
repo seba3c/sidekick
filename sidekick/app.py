@@ -2,6 +2,8 @@
 
 import html
 
+from settings import settings
+
 import gradio as gr
 
 import styles

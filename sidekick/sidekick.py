@@ -28,8 +28,6 @@ from langgraph.types import Command
 
 from sidekick_tools import get_all_tools
 
-load_dotenv(override=True)
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 SANDBOX = os.path.join(HERE, "sandbox")
 MAX_ATTEMPTS = 3

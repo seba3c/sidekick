@@ -10,5 +10,6 @@ dependencies = [
     "langchain-community>=0.4.2",
     "langchain-mcp-adapters>=0.3.2",
     "langchain-openai>=1.8.3",
+    "pydantic-settings>=2.16.3",
     "wikipedia>=1.4.0",
 ]

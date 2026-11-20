@@ -1,19 +1,17 @@
 """Tools for the Sidekick: a mix of MCP servers, ready-made LangChain tools and our own."""
 
 import asyncio
-import os
 from contextlib import AsyncExitStack
+
+from settings import settings
 
 import requests
 import wikipedia
-from dotenv import load_dotenv
 from langchain_community.tools import GoogleSerperRun, WikipediaQueryRun
 from langchain_community.utilities import GoogleSerperAPIWrapper, WikipediaAPIWrapper
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.tools import load_mcp_tools
-
-load_dotenv(override=True)
 
 # Wikimedia rejects the wikipedia library's default user agent, so identify ourselves properly
 wikipedia.set_user_agent("agentic-track-course (https://edwarddonner.com)")
@@ -28,7 +26,11 @@ def send_push_notification(text: str) -> str:
     """Send a short push notification to the user's phone."""
     response = requests.post(
         "https://api.pushover.net/1/messages.json",
-        data={"token": os.getenv("PUSHOVER_TOKEN"), "user": os.getenv("PUSHOVER_USER"), "message": text},
+        data={
+            "token": settings.pushover_token.get_secret_value(),
+            "user": settings.pushover_user.get_secret_value(),
+            "message": text,
+        },
     )
     response.raise_for_status()
     return "Notification sent"
