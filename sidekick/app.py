@@ -11,9 +11,36 @@ LAUNCH_STYLE = {"theme": styles.THEME, "css": styles.CSS, "head": styles.JS}
 
 HEADER = """
 <div id="header">
-    <div class="context-label">Personal co-worker</div>
-    <h1>Sidekick</h1>
-    <div class="brand-bar"></div>
+    <div>
+        <h1>
+            <svg class="title-icon" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M12 3v3M9 3h3" />
+                <rect x="5" y="6" width="14" height="14" rx="4" />
+                <path d="M2 11v4m20-4v4M9 16h6" />
+                <circle cx="9" cy="11" r="1" />
+                <circle cx="15" cy="11" r="1" />
+            </svg>
+            Sidekick
+        </h1>
+        <p class="context-label">Personal co-worker</p>
+    </div>
+    <button id="theme-toggle" type="button" role="switch"
+            aria-label="Dark mode" aria-checked="true">
+        <svg class="theme-icon sun-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19
+                     M5 19l1.5-1.5m11-11L19 5" />
+        </svg>
+        <svg class="theme-icon moon-icon" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z" />
+        </svg>
+    </button>
 </div>
 """
 
@@ -75,28 +102,32 @@ def free_resources(sidekick):
 
 def main():
     with gr.Blocks(title="Sidekick") as ui:
-        gr.HTML(HEADER)
+        gr.HTML(HEADER, elem_id="app-header", js_on_load=styles.THEME_SWITCH_JS)
         sidekick = gr.State(delete_callback=free_resources)
 
-        with gr.Row():
+        with gr.Row(elem_id="workspace"):
             chatbot = gr.Chatbot(label="Sidekick", height=320, scale=3, elem_id="chat")
-            with gr.Column(scale=1):
+            with gr.Column(scale=1, elem_id="plan-column"):
                 todos_panel = gr.HTML(render_todos([]), elem_id="plan-panel")
-        with gr.Group(elem_id="ask-panel"):
+        with gr.Column(elem_id="ask-panel"):
             with gr.Row():
                 message = gr.Textbox(
-                    show_label=False, placeholder="Your request to the Sidekick"
+                    label="Your request",
+                    placeholder="Your request to the Sidekick",
                 )
             with gr.Row():
                 success_criteria = gr.Textbox(
-                    show_label=False, placeholder="What are your success criteria?"
+                    label="Success criteria",
+                    placeholder="What are your success criteria?",
                 )
-        with gr.Row():
+        with gr.Row(elem_id="actions"):
             reset_button = gr.Button("Reset", elem_id="reset-button")
             approve_button = gr.Button(
                 "Approve and continue", visible=False, elem_id="approve-button"
             )
-            go_button = gr.Button("Go!", elem_id="go-button", interactive=False)
+            go_button = gr.Button(
+                "Go!", variant="primary", elem_id="go-button", interactive=False
+            )
 
         timer = gr.Timer(1)
 
