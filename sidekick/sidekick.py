@@ -1,82 +1,19 @@
-"""The Sidekick: a create_agent worker wrapped in a homemade evaluator loop.
+"""Orchestrate worker attempts, evaluator feedback, and user approvals."""
 
-The worker is a single create_agent (Layer 3). Around it we run our own loop that checks
-the worker's answer against the user's success criteria, and either accepts it, sends it
-back for another attempt, or returns to the user with a question. Middleware gives the
-worker a plan it shares with the UI, guardrails for PII and runaway costs, and a pause
-for human approval before sensitive actions.
-"""
-
-import os
 import uuid
-from datetime import datetime
 
-from langchain.agents import create_agent
-from langchain.agents.middleware import (
-    AgentMiddleware,
-    HumanInTheLoopMiddleware,
-    ModelCallLimitMiddleware,
-    PIIMiddleware,
-    TodoListMiddleware,
-)
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import ToolMessage
-from langgraph.checkpoint.memory import InMemorySaver
+from evaluator import Evaluator
 from langgraph.types import Command
-from pydantic import BaseModel, Field
-from settings import settings
-from sidekick_tools import get_all_tools
+from worker import Worker
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-SANDBOX = os.path.join(HERE, "sandbox")
 MAX_ATTEMPTS = 3
-
-
-class EvaluatorOutput(BaseModel):
-    feedback: str = Field(description="Feedback on the assistant's response")
-    success_criteria_met: bool = Field(
-        description="Whether the success criteria have been met"
-    )
-    user_input_needed: bool = Field(
-        description="True if the assistant has a question, needs clarification, or is stuck and needs the user"
-    )
-
-
-WORKER_PROMPT = """You are Sidekick, a capable personal assistant who completes tasks for the user.
-You have a real web browser, a sandbox filesystem, web search, Wikipedia, and the ability to send push notifications.
-When you use the browser, navigate to a page and read it with a snapshot rather than clicking around unnecessarily.
-Dismiss cookie banners and popups yourself by clicking in the browser. If you reach something only a human can do,
-like logging in, a captcha, or two-factor authentication, use the request_human_help tool to tell the user exactly
-what to do in your browser window, then carry on once they have done it.
-For flight searches, use Google Flights in your browser: go straight to https://www.google.com/travel/flights?q=...
-with a natural language query like "flights from New York to London leaving 14 July returning 21 July".
-Keep working on the task until the success criteria are met, or until you genuinely need to ask the user a question.
-If you have a question, ask it plainly. When you are finished, give your final answer clearly,
-saying what you did, what you produced, and what you found."""
-
-
-class TolerateToolErrors(AgentMiddleware):
-    """Hand tool failures back to the model as a message so it can recover, rather than
-    crashing the run. Tools that touch the outside world, like a browser, fail now and then."""
-
-    async def awrap_tool_call(self, request, handler):
-        try:
-            return await handler(request)
-        except Exception as error:  # noqa: BLE001
-            return ToolMessage(
-                content=f"That tool call failed: {error}. Try another approach.",
-                tool_call_id=request.tool_call["id"],
-            )
 
 
 class Sidekick:
     def __init__(self):
         self.sidekick_id = str(uuid.uuid4())
-        self.memory = InMemorySaver()
-        self.tools = None
-        self.sessions = None
-        self.worker = None
-        self.evaluator = None
+        self.worker = Worker()
+        self.evaluator = Evaluator()
         self.task = ""
         self.success_criteria = ""
         self.attempts = 0
@@ -85,56 +22,8 @@ class Sidekick:
         self.todos = []
 
     async def setup(self):
-        os.makedirs(SANDBOX, exist_ok=True)
-        self.tools, self.sessions = await get_all_tools(SANDBOX)
-        self.worker = create_agent(
-            model=settings.worker_model,
-            tools=self.tools,
-            system_prompt=f"{WORKER_PROMPT}\nToday is {datetime.now():%A %d %B %Y}.",
-            middleware=[
-                TolerateToolErrors(),
-                TodoListMiddleware(),
-                PIIMiddleware("email"),
-                PIIMiddleware("credit_card", apply_to_tool_results=True),
-                ModelCallLimitMiddleware(run_limit=30),
-                HumanInTheLoopMiddleware(
-                    interrupt_on={
-                        "send_push_notification": True,
-                        "request_human_help": True,
-                    }
-                ),
-            ],
-            checkpointer=self.memory,
-        )
-        self.evaluator = init_chat_model(
-            settings.evaluator_model
-        ).with_structured_output(EvaluatorOutput)
-
-    async def evaluate(
-        self,
-        message: str,
-        success_criteria: str,
-        last_reply: str,
-        tools_used: list[str],
-    ) -> EvaluatorOutput:
-        prompt = f"""You decide whether an assistant has met the success criteria for a task.
-
-The user's request was:
-{message}
-
-The success criteria are:
-{success_criteria}
-
-The tools the assistant called while working, in order:
-{", ".join(tools_used) or "none"}
-
-The assistant's most recent reply was:
-{last_reply}
-
-Decide whether the success criteria are met, using the tool calls as evidence of what was actually done.
-Also decide whether the assistant needs more input from the user, either because it asked a question,
-needs clarification, or seems stuck. Give brief, concrete feedback."""
-        return await self.evaluator.ainvoke(prompt)
+        await self.worker.setup()
+        self.evaluator.setup()
 
     async def run_turn(
         self, message: str, success_criteria: str, history: list
@@ -196,7 +85,7 @@ needs clarification, or seems stuck. Give brief, concrete feedback."""
                 for call in (getattr(m, "tool_calls", None) or [])
             ]
             self.attempts += 1
-            verdict = await self.evaluate(
+            verdict = await self.evaluator.evaluate(
                 self.task, self.success_criteria, reply, tools_used
             )
             if (
@@ -220,5 +109,4 @@ needs clarification, or seems stuck. Give brief, concrete feedback."""
 
     def cleanup(self):
         """Shut down the MCP servers; the browser window closes."""
-        if self.sessions:
-            self.sessions.stop()
+        self.worker.cleanup()
