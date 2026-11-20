@@ -106,20 +106,21 @@ def main():
         sidekick = gr.State(delete_callback=free_resources)
 
         with gr.Row(elem_id="workspace"):
-            chatbot = gr.Chatbot(label="Sidekick", height=320, scale=3, elem_id="chat")
+            chatbot = gr.Chatbot(label="Sidekick", height=400, elem_id="chat")
+        with gr.Row(equal_height=True, elem_id="request-workspace"):
+            with gr.Column(scale=1, elem_id="ask-panel"):
+                with gr.Row():
+                    message = gr.Textbox(
+                        label="Your request",
+                        placeholder="Your request to the Sidekick",
+                    )
+                with gr.Row():
+                    success_criteria = gr.Textbox(
+                        label="Success criteria",
+                        placeholder="What are your success criteria?",
+                    )
             with gr.Column(scale=1, elem_id="plan-column"):
                 todos_panel = gr.HTML(render_todos([]), elem_id="plan-panel")
-        with gr.Column(elem_id="ask-panel"):
-            with gr.Row():
-                message = gr.Textbox(
-                    label="Your request",
-                    placeholder="Your request to the Sidekick",
-                )
-            with gr.Row():
-                success_criteria = gr.Textbox(
-                    label="Success criteria",
-                    placeholder="What are your success criteria?",
-                )
         with gr.Row(elem_id="actions"):
             reset_button = gr.Button("Reset", elem_id="reset-button")
             approve_button = gr.Button(

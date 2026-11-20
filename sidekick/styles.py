@@ -196,6 +196,11 @@ CSS = """
 }
 
 #workspace { gap: 16px; }
+#request-workspace {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
 #chat, #plan-panel, #ask-panel {
     background: var(--background-fill-primary);
     border: 1px solid var(--border-color-primary);
@@ -261,12 +266,13 @@ CSS = """
     #header { gap: 12px; }
     #header h1 { font-size: 24px; }
     #workspace { flex-direction: column; }
-    #workspace > *, #plan-column {
+    #request-workspace { grid-template-columns: minmax(0, 1fr); }
+    #workspace > *, #request-workspace > * {
         min-width: 0 !important;
         width: 100%;
         flex: none;
     }
-    #chat { height: 320px; }
+    #chat { height: 400px; }
     #plan-panel { padding: 16px; }
     #actions { flex-wrap: wrap; }
 }

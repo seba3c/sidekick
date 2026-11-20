@@ -12,3 +12,4 @@ wheels/
 sandbox/
 .python-version
 .idea/
+.playwright-mcp/
