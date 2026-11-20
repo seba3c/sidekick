@@ -2,11 +2,9 @@
 
 import html
 
-from settings import settings
-
 import gradio as gr
-
 import styles
+
 from sidekick import Sidekick
 
 LAUNCH_STYLE = {"theme": styles.THEME, "css": styles.CSS, "head": styles.JS}
@@ -24,10 +22,14 @@ def render_todos(todos):
     if not todos:
         items = '<div class="placeholder">The Sidekick will write its plan here as it works</div>'
     else:
-        items = "<ul>" + "".join(
-            f'<li class="{todo["status"]}"><span class="mark"></span>{html.escape(todo["content"])}</li>'
-            for todo in todos
-        ) + "</ul>"
+        items = (
+            "<ul>"
+            + "".join(
+                f'<li class="{todo["status"]}"><span class="mark"></span>{html.escape(todo["content"])}</li>'
+                for todo in todos
+            )
+            + "</ul>"
+        )
     return f"<h3>Plan</h3>{items}"
 
 
@@ -38,7 +40,9 @@ async def setup():
 
 
 async def process_message(sidekick, message, success_criteria, history):
-    if sidekick is None:  # the user clicked before setup finished bringing up the MCP servers
+    if (
+        sidekick is None
+    ):  # the user clicked before setup finished bringing up the MCP servers
         return history, gr.update(visible=False), sidekick
     results = await sidekick.run_turn(message, success_criteria, history)
     return results, gr.update(visible=sidekick.paused), sidekick
@@ -80,28 +84,50 @@ def main():
                 todos_panel = gr.HTML(render_todos([]), elem_id="plan-panel")
         with gr.Group(elem_id="ask-panel"):
             with gr.Row():
-                message = gr.Textbox(show_label=False, placeholder="Your request to the Sidekick")
+                message = gr.Textbox(
+                    show_label=False, placeholder="Your request to the Sidekick"
+                )
             with gr.Row():
-                success_criteria = gr.Textbox(show_label=False, placeholder="What are your success criteria?")
+                success_criteria = gr.Textbox(
+                    show_label=False, placeholder="What are your success criteria?"
+                )
         with gr.Row():
             reset_button = gr.Button("Reset", elem_id="reset-button")
-            approve_button = gr.Button("Approve and continue", visible=False, elem_id="approve-button")
+            approve_button = gr.Button(
+                "Approve and continue", visible=False, elem_id="approve-button"
+            )
             go_button = gr.Button("Go!", elem_id="go-button", interactive=False)
 
         timer = gr.Timer(1)
 
         ui.load(setup, [], [sidekick, go_button])
         timer.tick(watch_todos, [sidekick], [todos_panel], show_progress="hidden")
-        message.submit(process_message, [sidekick, message, success_criteria, chatbot],
-                    [chatbot, approve_button, sidekick])
-        success_criteria.submit(process_message, [sidekick, message, success_criteria, chatbot],
-                                [chatbot, approve_button, sidekick])
-        go_button.click(process_message, [sidekick, message, success_criteria, chatbot],
-                        [chatbot, approve_button, sidekick])
-        approve_button.click(approve, [sidekick, chatbot], [chatbot, approve_button, sidekick])
-        reset_button.click(reset, [sidekick], [message, success_criteria, chatbot, approve_button, sidekick])
+        message.submit(
+            process_message,
+            [sidekick, message, success_criteria, chatbot],
+            [chatbot, approve_button, sidekick],
+        )
+        success_criteria.submit(
+            process_message,
+            [sidekick, message, success_criteria, chatbot],
+            [chatbot, approve_button, sidekick],
+        )
+        go_button.click(
+            process_message,
+            [sidekick, message, success_criteria, chatbot],
+            [chatbot, approve_button, sidekick],
+        )
+        approve_button.click(
+            approve, [sidekick, chatbot], [chatbot, approve_button, sidekick]
+        )
+        reset_button.click(
+            reset,
+            [sidekick],
+            [message, success_criteria, chatbot, approve_button, sidekick],
+        )
 
     ui.launch(inbrowser=True, **LAUNCH_STYLE)
+
 
 if __name__ == "__main__":
     main()

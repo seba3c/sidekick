@@ -11,9 +11,6 @@ import os
 import uuid
 from datetime import datetime
 
-from dotenv import load_dotenv
-from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
     AgentMiddleware,
@@ -23,9 +20,10 @@ from langchain.agents.middleware import (
     TodoListMiddleware,
 )
 from langchain_core.messages import ToolMessage
+from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
-
+from pydantic import BaseModel, Field
 from sidekick_tools import get_all_tools
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,7 +33,9 @@ MAX_ATTEMPTS = 3
 
 class EvaluatorOutput(BaseModel):
     feedback: str = Field(description="Feedback on the assistant's response")
-    success_criteria_met: bool = Field(description="Whether the success criteria have been met")
+    success_criteria_met: bool = Field(
+        description="Whether the success criteria have been met"
+    )
     user_input_needed: bool = Field(
         description="True if the assistant has a question, needs clarification, or is stuck and needs the user"
     )
@@ -61,7 +61,7 @@ class TolerateToolErrors(AgentMiddleware):
     async def awrap_tool_call(self, request, handler):
         try:
             return await handler(request)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
             return ToolMessage(
                 content=f"That tool call failed: {error}. Try another approach.",
                 tool_call_id=request.tool_call["id"],
@@ -97,15 +97,24 @@ class Sidekick:
                 PIIMiddleware("credit_card", apply_to_tool_results=True),
                 ModelCallLimitMiddleware(run_limit=30),
                 HumanInTheLoopMiddleware(
-                    interrupt_on={"send_push_notification": True, "request_human_help": True}
+                    interrupt_on={
+                        "send_push_notification": True,
+                        "request_human_help": True,
+                    }
                 ),
             ],
             checkpointer=self.memory,
         )
-        self.evaluator = ChatOpenAI(model="gpt-5.4-mini").with_structured_output(EvaluatorOutput)
+        self.evaluator = ChatOpenAI(model="gpt-5.4-mini").with_structured_output(
+            EvaluatorOutput
+        )
 
     async def evaluate(
-        self, message: str, success_criteria: str, last_reply: str, tools_used: list[str]
+        self,
+        message: str,
+        success_criteria: str,
+        last_reply: str,
+        tools_used: list[str],
     ) -> EvaluatorOutput:
         prompt = f"""You decide whether an assistant has met the success criteria for a task.
 
@@ -126,12 +135,16 @@ Also decide whether the assistant needs more input from the user, either because
 needs clarification, or seems stuck. Give brief, concrete feedback."""
         return await self.evaluator.ainvoke(prompt)
 
-    async def run_turn(self, message: str, success_criteria: str, history: list) -> list:
+    async def run_turn(
+        self, message: str, success_criteria: str, history: list
+    ) -> list:
         """One turn of conversation: the worker attempts the task and the evaluator checks it,
         retrying with feedback up to MAX_ATTEMPTS. If the worker pauses for approval, this
         returns straight away with paused set, and resume() continues the same turn."""
         self.task = message
-        self.success_criteria = success_criteria or "The answer should be clear, correct and complete"
+        self.success_criteria = (
+            success_criteria or "The answer should be clear, correct and complete"
+        )
         self.attempts = 0
         self.todos = []
         payload = {
@@ -142,18 +155,24 @@ needs clarification, or seems stuck. Give brief, concrete feedback."""
                 }
             ]
         }
-        return await self._advance(payload, history + [{"role": "user", "content": message}])
+        return await self._advance(
+            payload, history + [{"role": "user", "content": message}]
+        )
 
     async def resume(self, history: list) -> list:
         """Approve the actions the worker paused on, and continue the turn."""
-        payload = Command(resume={"decisions": [{"type": "approve"}] * self.pending_actions})
+        payload = Command(
+            resume={"decisions": [{"type": "approve"}] * self.pending_actions}
+        )
         return await self._advance(payload, history)
 
     async def _advance(self, payload, history: list) -> list:
         config = {"configurable": {"thread_id": self.sidekick_id}}
         while True:
             result = None
-            async for result in self.worker.astream(payload, config=config, stream_mode="values"):
+            async for result in self.worker.astream(
+                payload, config=config, stream_mode="values"
+            ):
                 self.todos = result.get("todos", self.todos)
 
             if "__interrupt__" in result:
@@ -161,16 +180,29 @@ needs clarification, or seems stuck. Give brief, concrete feedback."""
                 self.paused = True
                 self.pending_actions = len(actions)
                 described = "\n".join(action["description"] for action in actions)
-                return history + [{"role": "assistant", "content": f"Waiting for your approval:\n{described}"}]
+                return history + [
+                    {
+                        "role": "assistant",
+                        "content": f"Waiting for your approval:\n{described}",
+                    }
+                ]
 
             self.paused = False
             reply = result["messages"][-1].content
             tools_used = [
-                call["name"] for m in result["messages"] for call in (getattr(m, "tool_calls", None) or [])
+                call["name"]
+                for m in result["messages"]
+                for call in (getattr(m, "tool_calls", None) or [])
             ]
             self.attempts += 1
-            verdict = await self.evaluate(self.task, self.success_criteria, reply, tools_used)
-            if verdict.success_criteria_met or verdict.user_input_needed or self.attempts >= MAX_ATTEMPTS:
+            verdict = await self.evaluate(
+                self.task, self.success_criteria, reply, tools_used
+            )
+            if (
+                verdict.success_criteria_met
+                or verdict.user_input_needed
+                or self.attempts >= MAX_ATTEMPTS
+            ):
                 return history + [
                     {"role": "assistant", "content": reply},
                     {"role": "assistant", "content": f"Evaluator: {verdict.feedback}"},

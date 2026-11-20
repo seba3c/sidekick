@@ -3,8 +3,6 @@
 import asyncio
 from contextlib import AsyncExitStack
 
-from settings import settings
-
 import requests
 import wikipedia
 from langchain_community.tools import GoogleSerperRun, WikipediaQueryRun
@@ -12,6 +10,7 @@ from langchain_community.utilities import GoogleSerperAPIWrapper, WikipediaAPIWr
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.tools import load_mcp_tools
+from settings import settings
 
 # Wikimedia rejects the wikipedia library's default user agent, so identify ourselves properly
 wikipedia.set_user_agent("agentic-track-course (https://edwarddonner.com)")

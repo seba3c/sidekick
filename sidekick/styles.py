@@ -13,12 +13,25 @@ BACKGROUND = "#F2F2F2"
 
 THEME = gr.themes.Soft(
     primary_hue=gr.themes.Color(
-        c50="#F0F9FE", c100="#D0EBF8", c200="#A1D8F2", c300="#75C5EA", c400="#48B1E1",
-        c500="#209DD7", c600="#1775A1", c700="#135F83", c800="#0F4E6B", c900="#0B3A50",
+        c50="#F0F9FE",
+        c100="#D0EBF8",
+        c200="#A1D8F2",
+        c300="#75C5EA",
+        c400="#48B1E1",
+        c500="#209DD7",
+        c600="#1775A1",
+        c700="#135F83",
+        c800="#0F4E6B",
+        c900="#0B3A50",
         c950="#072735",
     ),
     neutral_hue="slate",
-    font=[gr.themes.GoogleFont("Montserrat"), "ui-sans-serif", "system-ui", "sans-serif"],
+    font=[
+        gr.themes.GoogleFont("Montserrat"),
+        "ui-sans-serif",
+        "system-ui",
+        "sans-serif",
+    ],
     font_mono=["Courier New", "ui-monospace", "monospace"],
 )
 
