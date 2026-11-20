@@ -35,7 +35,16 @@ OPENAI_API_KEY=your-openai-api-key
 SERPER_API_KEY=your-serper-api-key
 ```
 
-Use an OpenAI API key with access to `gpt-5.4-mini`, which is configured in the code for both the worker and evaluator. `SERPER_API_KEY` is required at startup for Google search through Serper.
+By default, both the worker and evaluator use OpenAI's `gpt-5.4-mini`; use an OpenAI API key with access to that model. `SERPER_API_KEY` is required at startup for Google search through Serper.
+
+To configure the models independently, set these optional variables in `.env`:
+
+```dotenv
+WORKER_MODEL=openai:gpt-5.4-mini
+EVALUATOR_MODEL=openai:gpt-5.4-mini
+```
+
+Both settings use LangChain's `provider:model` format. Each role can use a different provider if its LangChain integration package is installed and its required credentials are configured. The worker model must support tool calling, and the evaluator model must support structured output. Restart the app after changing either setting.
 
 To customize the user agent sent to Wikipedia, set `WIKIPEDIA_USER_AGENT` in `.env`. It defaults to `agentic-track-course (https://edwarddonner.com)`.
 

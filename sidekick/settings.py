@@ -19,6 +19,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    worker_model: str = "openai:gpt-5.4-mini"
+    evaluator_model: str = "openai:gpt-5.4-mini"
     pushover_user: SecretStr | None = None
     pushover_token: SecretStr | None = None
     wikipedia_user_agent: str = "sidekick (https://sebastiancastaneda.dev)"

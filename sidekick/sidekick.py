@@ -19,11 +19,12 @@ from langchain.agents.middleware import (
     PIIMiddleware,
     TodoListMiddleware,
 )
+from langchain.chat_models import init_chat_model
 from langchain_core.messages import ToolMessage
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 from pydantic import BaseModel, Field
+from settings import settings
 from sidekick_tools import get_all_tools
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -87,7 +88,7 @@ class Sidekick:
         os.makedirs(SANDBOX, exist_ok=True)
         self.tools, self.sessions = await get_all_tools(SANDBOX)
         self.worker = create_agent(
-            model="openai:gpt-5.4-mini",
+            model=settings.worker_model,
             tools=self.tools,
             system_prompt=f"{WORKER_PROMPT}\nToday is {datetime.now():%A %d %B %Y}.",
             middleware=[
@@ -105,9 +106,9 @@ class Sidekick:
             ],
             checkpointer=self.memory,
         )
-        self.evaluator = ChatOpenAI(model="gpt-5.4-mini").with_structured_output(
-            EvaluatorOutput
-        )
+        self.evaluator = init_chat_model(
+            settings.evaluator_model
+        ).with_structured_output(EvaluatorOutput)
 
     async def evaluate(
         self,
