@@ -5,11 +5,13 @@ from contextlib import AsyncExitStack
 
 import requests
 import wikipedia
+import yfinance as yf
 from langchain_community.tools import GoogleSerperRun, WikipediaQueryRun
 from langchain_community.utilities import GoogleSerperAPIWrapper, WikipediaAPIWrapper
 from langchain_core.tools import tool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.tools import load_mcp_tools
+from pydantic import BaseModel
 from settings import settings
 
 # Wikimedia rejects the wikipedia library's default user agent, so identify ourselves properly
@@ -18,6 +20,28 @@ wikipedia.set_user_agent(settings.wikipedia_user_agent)
 search = GoogleSerperRun(api_wrapper=GoogleSerperAPIWrapper())
 
 wikipedia_lookup = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+
+
+class YahooNews(BaseModel):
+    ticker: str
+    titles: list[str]
+
+
+@tool
+def yahoo_finance_news(ticker: str) -> str:
+    """Fetch recent Yahoo Finance news headlines for a stock ticker, such as AAPL or MSFT.
+    Returns JSON containing the ticker and headline titles.
+    """
+    articles = yf.Ticker(ticker).get_news(count=5)
+    response = YahooNews(
+        ticker=ticker,
+        titles=[
+            content["title"]
+            for article in articles
+            if (content := article.get("content") or {}).get("title")
+        ],
+    )
+    return response.model_dump_json()
 
 
 @tool
@@ -100,5 +124,5 @@ async def get_all_tools(sandbox: str):
     """Return the full tool list (our tools plus the MCP server tools) and the session holder."""
     sessions = McpSessions(mcp_connections(sandbox))
     mcp_tools = await sessions.start()
-    our_tools = [search, wikipedia_lookup, request_human_help]
+    our_tools = [search, wikipedia_lookup, request_human_help, yahoo_finance_news]
     return our_tools + mcp_tools, sessions
