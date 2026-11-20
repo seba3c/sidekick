@@ -13,7 +13,7 @@ from langchain_mcp_adapters.tools import load_mcp_tools
 from settings import settings
 
 # Wikimedia rejects the wikipedia library's default user agent, so identify ourselves properly
-wikipedia.set_user_agent("agentic-track-course (https://edwarddonner.com)")
+wikipedia.set_user_agent(settings.wikipedia_user_agent)
 
 search = GoogleSerperRun(api_wrapper=GoogleSerperAPIWrapper())
 
@@ -100,5 +100,5 @@ async def get_all_tools(sandbox: str):
     """Return the full tool list (our tools plus the MCP server tools) and the session holder."""
     sessions = McpSessions(mcp_connections(sandbox))
     mcp_tools = await sessions.start()
-    our_tools = [search, send_push_notification, wikipedia_lookup, request_human_help]
+    our_tools = [search, wikipedia_lookup, request_human_help]
     return our_tools + mcp_tools, sessions

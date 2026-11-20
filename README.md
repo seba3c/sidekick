@@ -37,6 +37,8 @@ SERPER_API_KEY=your-serper-api-key
 
 Use an OpenAI API key with access to `gpt-5.4-mini`, which is configured in the code for both the worker and evaluator. `SERPER_API_KEY` is required at startup for Google search through Serper.
 
+To customize the user agent sent to Wikipedia, set `WIKIPEDIA_USER_AGENT` in `.env`. It defaults to `agentic-track-course (https://edwarddonner.com)`.
+
 To enable push notifications to your phone, add your Pushover credentials:
 
 ```dotenv

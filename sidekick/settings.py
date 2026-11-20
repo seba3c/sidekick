@@ -21,6 +21,7 @@ class Settings(BaseSettings):
 
     pushover_user: SecretStr | None = None
     pushover_token: SecretStr | None = None
+    wikipedia_user_agent: str = "sidekick (https://sebastiancastaneda.dev)"
 
 
 settings = Settings()

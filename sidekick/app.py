@@ -11,7 +11,7 @@ LAUNCH_STYLE = {"theme": styles.THEME, "css": styles.CSS, "head": styles.JS}
 
 HEADER = """
 <div id="header">
-    <div class="context-label">Your personal co-worker</div>
+    <div class="context-label">Personal co-worker</div>
     <h1>Sidekick</h1>
     <div class="brand-bar"></div>
 </div>
