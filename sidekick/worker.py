@@ -4,15 +4,8 @@ import os
 from datetime import datetime
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import (
-    AgentMiddleware,
-    HumanInTheLoopMiddleware,
-    ModelCallLimitMiddleware,
-    PIIMiddleware,
-    TodoListMiddleware,
-)
-from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
+from middleware import get_all_middlewares
 from settings import settings
 from tools import get_all_tools
 
@@ -33,20 +26,6 @@ If you have a question, ask it plainly. When you are finished, give your final a
 saying what you did, what you produced, and what you found."""
 
 
-class TolerateToolErrors(AgentMiddleware):
-    """Hand tool failures back to the model as a message so it can recover, rather than
-    crashing the run. Tools that touch the outside world, like a browser, fail now and then."""
-
-    async def awrap_tool_call(self, request, handler):
-        try:
-            return await handler(request)
-        except Exception as error:  # noqa: BLE001
-            return ToolMessage(
-                content=f"That tool call failed: {error}. Try another approach.",
-                tool_call_id=request.tool_call["id"],
-            )
-
-
 class Worker:
     def __init__(self):
         self.memory = InMemorySaver()
@@ -60,22 +39,13 @@ class Worker:
         self.agent = create_agent(
             model=settings.worker_model,
             tools=self.tools,
-            system_prompt=f"{WORKER_PROMPT}\nToday is {datetime.now():%A %d %B %Y}.",
-            middleware=[
-                TolerateToolErrors(),
-                TodoListMiddleware(),
-                PIIMiddleware("email"),
-                PIIMiddleware("credit_card", apply_to_tool_results=True),
-                ModelCallLimitMiddleware(run_limit=30),
-                HumanInTheLoopMiddleware(
-                    interrupt_on={
-                        "send_push_notification": True,
-                        "request_human_help": True,
-                    }
-                ),
-            ],
+            system_prompt=self.get_system_prompt(),
+            middleware=get_all_middlewares(),
             checkpointer=self.memory,
         )
+
+    def get_system_prompt(self):
+        return f"{WORKER_PROMPT}\nToday is {datetime.now():%A %d %B %Y}."
 
     def astream(self, payload, config, stream_mode="values"):
         """Stream agent state, including todos and approval interrupts."""

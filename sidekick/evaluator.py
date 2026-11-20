@@ -24,6 +24,31 @@ class Evaluator:
             EvaluatorOutput
         )
 
+    def get_system_prompt(
+        self,
+        message: str,
+        success_criteria: str,
+        last_reply: str,
+        tools_used: list[str],
+    ) -> str:
+        return f"""You decide whether an assistant has met the success criteria for a task.
+
+        The user's request was:
+        {message}
+
+        The success criteria are:
+        {success_criteria}
+
+        The tools the assistant called while working, in order:
+        {", ".join(tools_used) or "none"}
+
+        The assistant's most recent reply was:
+        {last_reply}
+
+        Decide whether the success criteria are met, using the tool calls as evidence of what was actually done.
+        Also decide whether the assistant needs more input from the user, either because it asked a question,
+        needs clarification, or seems stuck. Give brief, concrete feedback."""
+
     async def evaluate(
         self,
         message: str,
@@ -31,21 +56,7 @@ class Evaluator:
         last_reply: str,
         tools_used: list[str],
     ) -> EvaluatorOutput:
-        prompt = f"""You decide whether an assistant has met the success criteria for a task.
-
-The user's request was:
-{message}
-
-The success criteria are:
-{success_criteria}
-
-The tools the assistant called while working, in order:
-{", ".join(tools_used) or "none"}
-
-The assistant's most recent reply was:
-{last_reply}
-
-Decide whether the success criteria are met, using the tool calls as evidence of what was actually done.
-Also decide whether the assistant needs more input from the user, either because it asked a question,
-needs clarification, or seems stuck. Give brief, concrete feedback."""
+        prompt = self.get_system_prompt(
+            message, success_criteria, last_reply, tools_used
+        )
         return await self.model.ainvoke(prompt)
